@@ -854,8 +854,8 @@ async function handleFetch() {
       });
     }
     
-    // Grab the top 5 files to audit
-    const filesToFetch = targetFiles.slice(0, 5);
+    // Grab the top 20 files to audit
+    const filesToFetch = targetFiles.slice(0, 20);
     let aggregatedCode = '';
     
     for (const file of filesToFetch) {
