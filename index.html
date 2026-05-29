@@ -437,12 +437,16 @@ body {
     <div class="field-label">Anthropic API Key</div>
     <div class="input-row">
       <input class="text-input" type="password" id="api-key-input" placeholder="sk-ant-api03-..." style="font-family:'JetBrains Mono',monospace;font-size:13px;" autocomplete="off"/>
+    </div>
+    <div class="field-label" style="margin-top:1rem;">GitHub Token (Optional - for private repos)</div>
+    <div class="input-row">
+      <input class="text-input" type="password" id="gh-token-input" placeholder="ghp_..." style="font-family:'JetBrains Mono',monospace;font-size:13px;" autocomplete="off"/>
+    </div>
+    <div style="margin-top:1.5rem;display:flex;gap:8px;justify-content:space-between;">
+      <button class="btn btn-danger-ghost" onclick="clearApiKey()"><i class="ti ti-trash"></i> Clear</button>
       <button class="btn btn-primary" onclick="saveApiKey()" id="save-key-btn"><i class="ti ti-check"></i> Save</button>
     </div>
-    <p class="modal-note">Your key is stored locally in your browser and never sent to any server other than Anthropic's API. Get your key at <a href="https://console.anthropic.com" target="_blank">console.anthropic.com</a>.</p>
-    <div style="margin-top:1rem;display:flex;gap:8px;justify-content:flex-end;">
-      <button class="btn btn-danger-ghost" onclick="clearApiKey()"><i class="ti ti-trash"></i> Clear key</button>
-    </div>
+    <p class="modal-note">Keys are stored locally in your browser. Get a GitHub token <a href="https://github.com/settings/tokens/new" target="_blank">here</a>.</p>
   </div>
 </div>
 
@@ -662,10 +666,12 @@ let activeScopes = new Set(['signer','overflow','ownership','reentrancy','cpi','
 let lastReport = null;
 let openFindings = new Set();
 let apiKey = '';
+let githubToken = '';
 
 /* ─── Init ─── */
 (function init() {
   apiKey = localStorage.getItem('chainaudit_api_key') || '';
+  githubToken = localStorage.getItem('chainaudit_gh_token') || '';
   updateApiUI();
 })();
 
@@ -687,6 +693,7 @@ function updateApiUI() {
 function openSettings() {
   const inp = document.getElementById('api-key-input');
   inp.value = apiKey ? '•'.repeat(Math.min(apiKey.length, 32)) : '';
+  document.getElementById('gh-token-input').value = githubToken ? '•'.repeat(Math.min(githubToken.length, 32)) : '';
   document.getElementById('settings-modal').classList.add('open');
   setTimeout(() => inp.focus(), 200);
 }
@@ -703,6 +710,11 @@ function saveApiKey() {
   if (!val || val.startsWith('•')) { closeSettings(); return; }
   apiKey = val;
   localStorage.setItem('chainaudit_api_key', val);
+  const ghVal = document.getElementById('gh-token-input').value.trim();
+  if (ghVal && !ghVal.startsWith('•')) {
+    githubToken = ghVal;
+    localStorage.setItem('chainaudit_gh_token', ghVal);
+  }
   updateApiUI();
   closeSettings();
   showToast('API key saved securely', 'ti-check');
@@ -710,6 +722,9 @@ function saveApiKey() {
 function clearApiKey() {
   apiKey = '';
   localStorage.removeItem('chainaudit_api_key');
+  githubToken = '';
+  localStorage.removeItem('chainaudit_gh_token');
+  document.getElementById('gh-token-input').value = '';
   document.getElementById('api-key-input').value = '';
   updateApiUI();
   showToast('API key cleared', 'ti-trash');
@@ -758,19 +773,24 @@ async function handleFetch() {
   btn.innerHTML = '<i class="ti ti-loader-2" style="animation:spin .7s linear infinite"></i> Fetching...';
   
   try {
+    const fetchOpts = {};
+    if (githubToken && !githubToken.startsWith('•')) {
+      fetchOpts.headers = { 'Authorization': `Bearer ${githubToken}` };
+    }
+
     // 1. Get default branch if not specified in URL
     let defaultBranch = branch;
     if (!defaultBranch) {
-      const repoRes = await fetch(`https://api.github.com/repos/${owner}/${repo}`);
+      const repoRes = await fetch(`https://api.github.com/repos/${owner}/${repo}`, fetchOpts);
       if (!repoRes.ok) {
-        throw new Error(`Repository not found or GitHub API limit reached`);
+        throw new Error(`Repository not found (is it private? Try adding a GitHub Token in settings)`);
       }
       const repoData = await repoRes.json();
       defaultBranch = repoData.default_branch || 'main';
     }
     
     // 2. Fetch the file tree recursively
-    const treeRes = await fetch(`https://api.github.com/repos/${owner}/${repo}/git/trees/${defaultBranch}?recursive=1`);
+    const treeRes = await fetch(`https://api.github.com/repos/${owner}/${repo}/git/trees/${defaultBranch}?recursive=1`, fetchOpts);
     if (!treeRes.ok) {
       throw new Error(`Failed to fetch repository structure`);
     }
@@ -862,7 +882,7 @@ async function handleFetch() {
     let aggregatedCode = '';
     
     for (const file of filesToFetch) {
-      const fileRes = await fetch(`https://raw.githubusercontent.com/${owner}/${repo}/${defaultBranch}/${file.path}`);
+      const fileRes = await fetch(`https://raw.githubusercontent.com/${owner}/${repo}/${defaultBranch}/${file.path}`, fetchOpts);
       if (fileRes.ok) {
         const text = await fileRes.text();
         aggregatedCode += `// ─── File: ${file.path} ───\n${text}\n\n`;
