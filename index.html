@@ -966,7 +966,7 @@ async function startAudit() {
       },
       body: JSON.stringify({
         model: document.getElementById('model-select').value,
-        max_tokens: 4096,
+        max_tokens: 8192,
         messages: [{ role: 'user', content: prompt }]
       })
     });
@@ -1037,6 +1037,7 @@ Your response MUST be a single valid JSON object — no markdown, no backticks, 
 
 Rules:
 - Always generate at least 6 findings covering multiple severity levels
+- Keep descriptions CONCISE (max 2 sentences) to prevent JSON truncation
 - Findings should be specific to Solana projects (DEX, DeFi, Staking, Swap, Launchpad, Liquidity protocol, etc.) focusing on key operational vectors (e.g., flash loan vectors, oracle manipulation risks, single point of failure in authorities, lockup enforcement, transaction validation client-side, liquidity provider risks, etc.)
 - If no code or text is provided, perform the audit on a typical Solana project matching the description (e.g. DeFi Staking or DEX)
 - Score: 80-100 = A, 65-79 = B, 50-64 = C, 30-49 = D, <30 = F`;
@@ -1073,6 +1074,7 @@ Your response MUST be a single valid JSON object — no markdown, no backticks, 
  
 Rules:
 - Always generate at least 6 findings covering multiple severity levels
+- Keep descriptions CONCISE (max 2 sentences) to prevent JSON truncation
 - Findings should be specific to Solana/Web3 Web client integrations (e.g., balance check race conditions, insecure transaction serialization, lack of signature verification, phishing vulnerability, lack of validation on user accounts, insecure storage of local state, Bonfida spoofing, etc.)
 - Include at least one critical or high finding for realistic programs
 - If no code is provided, generate realistic findings for a typical Solana Web3 frontend program`;
@@ -1108,6 +1110,7 @@ Your response MUST be a single valid JSON object — no markdown, no backticks, 
 
 Rules:
 - Always generate at least 6 findings covering multiple severity levels
+- Keep descriptions CONCISE (max 2 sentences) to prevent JSON truncation
 - Findings should be specific to Solana/Anchor patterns (not generic)
 - Include at least one critical or high finding for realistic programs
 - If no code is provided, generate realistic findings for a typical Solana DeFi program (e.g., AMM, lending, staking)
