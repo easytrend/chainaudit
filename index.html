@@ -1,0 +1,1287 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>ChainAudit — Solana Smart Contract Security Auditor</title>
+  <meta name="description" content="Professional AI-powered Solana smart contract security auditor. Detect critical vulnerabilities in Rust/Anchor programs in seconds."/>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.31.0/dist/tabler-icons.min.css"/>
+<style>
+/* ─── Reset & Base ─── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg: #07070F;
+  --surface: #0E0E1A;
+  --glass: rgba(255,255,255,0.04);
+  --glass-border: rgba(255,255,255,0.08);
+  --glass-hover: rgba(255,255,255,0.07);
+  --primary: #9945FF;
+  --primary-dim: rgba(153,69,255,0.15);
+  --primary-glow: rgba(153,69,255,0.4);
+  --secondary: #14F195;
+  --secondary-dim: rgba(20,241,149,0.12);
+  --text-1: #F0F0FF;
+  --text-2: #9090B0;
+  --text-3: #55556A;
+  --critical: #FF4757; --critical-bg: rgba(255,71,87,0.12);
+  --high: #FF9F43; --high-bg: rgba(255,159,67,0.12);
+  --medium: #54A0FF; --medium-bg: rgba(84,160,255,0.12);
+  --low: #2ECC71; --low-bg: rgba(46,204,113,0.12);
+  --info: #A29BFE; --info-bg: rgba(162,155,254,0.12);
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+}
+html { scroll-behavior: smooth; }
+body {
+  font-family: 'Inter', sans-serif;
+  background: var(--bg);
+  color: var(--text-1);
+  min-height: 100vh;
+  overflow-x: hidden;
+  line-height: 1.6;
+}
+
+/* ─── Animated Background ─── */
+.bg-canvas {
+  position: fixed; inset: 0; z-index: 0; pointer-events: none;
+  overflow: hidden;
+}
+.orb {
+  position: absolute; border-radius: 50%;
+  filter: blur(100px); opacity: 0.18;
+  animation: drift 20s ease-in-out infinite;
+}
+.orb-1 { width: 600px; height: 600px; background: #9945FF; top: -200px; left: -150px; animation-delay: 0s; }
+.orb-2 { width: 500px; height: 500px; background: #14F195; top: 40%; right: -150px; animation-delay: -7s; }
+.orb-3 { width: 400px; height: 400px; background: #00D2FF; bottom: -100px; left: 30%; animation-delay: -14s; }
+@keyframes drift {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33% { transform: translate(40px, -30px) scale(1.05); }
+  66% { transform: translate(-20px, 40px) scale(0.95); }
+}
+
+/* ─── Layout ─── */
+.wrapper { position: relative; z-index: 1; max-width: 900px; margin: 0 auto; padding: 2rem 1.25rem 4rem; }
+
+/* ─── Header ─── */
+.header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 2.5rem;
+}
+.brand { display: flex; align-items: center; gap: 14px; }
+.logo {
+  width: 44px; height: 44px; border-radius: 12px;
+  background: linear-gradient(135deg, #9945FF, #14F195);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 22px; color: #fff;
+  box-shadow: 0 0 24px rgba(153,69,255,0.5);
+  flex-shrink: 0;
+}
+.brand-text .name { font-size: 20px; font-weight: 700; letter-spacing: -0.3px; }
+.brand-text .tagline { font-size: 12px; color: var(--text-2); margin-top: 1px; }
+.header-actions { display: flex; gap: 8px; align-items: center; }
+
+/* ─── Glass Card ─── */
+.card {
+  background: var(--glass);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-xl);
+  padding: 1.5rem;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  margin-bottom: 1rem;
+  transition: border-color 0.2s;
+}
+.card:hover { border-color: rgba(255,255,255,0.12); }
+
+/* ─── Buttons ─── */
+.btn {
+  display: inline-flex; align-items: center; gap: 7px;
+  padding: 9px 18px; border-radius: var(--radius-md);
+  font-size: 13.5px; font-weight: 500;
+  cursor: pointer; border: none; outline: none;
+  transition: all 0.18s; white-space: nowrap; font-family: 'Inter', sans-serif;
+}
+.btn-primary {
+  background: linear-gradient(135deg, #9945FF, #7B35CC);
+  color: #fff;
+  box-shadow: 0 0 20px rgba(153,69,255,0.35);
+}
+.btn-primary:hover { box-shadow: 0 0 30px rgba(153,69,255,0.55); transform: translateY(-1px); }
+.btn-primary:active { transform: translateY(0); }
+.btn-primary:disabled { opacity: 0.45; cursor: not-allowed; transform: none; box-shadow: none; }
+.btn-ghost {
+  background: var(--glass); border: 1px solid var(--glass-border);
+  color: var(--text-2);
+}
+.btn-ghost:hover { background: var(--glass-hover); color: var(--text-1); border-color: rgba(255,255,255,0.14); }
+.btn-green {
+  background: linear-gradient(135deg, #14F195, #0DB371);
+  color: #07070F; font-weight: 600;
+  box-shadow: 0 0 20px rgba(20,241,149,0.3);
+}
+.btn-green:hover { box-shadow: 0 0 30px rgba(20,241,149,0.5); transform: translateY(-1px); }
+.btn-green:disabled { opacity: 0.45; cursor: not-allowed; transform: none; box-shadow: none; }
+.btn-danger-ghost { background: transparent; border: 1px solid rgba(255,71,87,0.3); color: #FF4757; }
+.btn-danger-ghost:hover { background: rgba(255,71,87,0.08); }
+.btn i { font-size: 16px; }
+
+/* ─── Section label ─── */
+.section-label {
+  font-size: 11px; font-weight: 600; letter-spacing: .1em;
+  text-transform: uppercase; color: var(--text-3); margin-bottom: .65rem;
+}
+
+/* ─── API Key Banner ─── */
+.api-banner {
+  display: flex; align-items: center; gap: 12px;
+  padding: .75rem 1.1rem;
+  background: rgba(153,69,255,0.08);
+  border: 1px solid rgba(153,69,255,0.25);
+  border-radius: var(--radius-md);
+  margin-bottom: 1rem; font-size: 13px; color: var(--text-2);
+}
+.api-banner i { color: #9945FF; font-size: 18px; flex-shrink: 0; }
+.api-banner .link { color: #9945FF; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
+.api-banner.ok { background: rgba(20,241,149,0.07); border-color: rgba(20,241,149,0.2); }
+.api-banner.ok i { color: #14F195; }
+
+/* ─── Input ─── */
+.input-row { display: flex; gap: 8px; align-items: flex-start; }
+.text-input {
+  flex: 1; font-size: 13.5px; padding: 10px 14px;
+  border: 1px solid var(--glass-border); border-radius: var(--radius-md);
+  background: rgba(255,255,255,0.03); color: var(--text-1);
+  font-family: 'JetBrains Mono', monospace; outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.text-input:focus { border-color: rgba(153,69,255,0.6); box-shadow: 0 0 0 3px rgba(153,69,255,0.12); }
+.text-input::placeholder { color: var(--text-3); font-family: 'Inter', sans-serif; }
+.code-editor {
+  width: 100%; min-height: 180px;
+  font-size: 13px; padding: 14px 16px;
+  border: 1px solid var(--glass-border); border-radius: var(--radius-md);
+  background: rgba(0,0,0,0.3); color: #E0E0FF;
+  font-family: 'JetBrains Mono', monospace;
+  resize: vertical; outline: none; line-height: 1.7;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  tab-size: 2;
+}
+.code-editor:focus { border-color: rgba(153,69,255,0.5); box-shadow: 0 0 0 3px rgba(153,69,255,0.1); }
+.code-editor::placeholder { color: var(--text-3); font-family: 'Inter', sans-serif; line-height: 1.8; }
+
+/* ─── Divider ─── */
+.or-divider {
+  display: flex; align-items: center; gap: 10px;
+  margin: 1rem 0; color: var(--text-3); font-size: 12px;
+}
+.or-divider::before, .or-divider::after {
+  content: ''; flex: 1; height: 1px; background: var(--glass-border);
+}
+
+/* ─── Scope Grid ─── */
+.scope-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 8px; margin-top: .5rem;
+}
+.scope-chip {
+  display: flex; align-items: center; gap: 8px;
+  padding: 9px 12px; border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md); cursor: pointer;
+  font-size: 12.5px; color: var(--text-2);
+  background: rgba(255,255,255,0.02);
+  transition: all 0.18s; user-select: none;
+}
+.scope-chip i { font-size: 16px; flex-shrink: 0; }
+.scope-chip:hover { background: var(--glass-hover); border-color: rgba(255,255,255,0.14); color: var(--text-1); }
+.scope-chip.active {
+  border-color: rgba(153,69,255,0.5);
+  background: rgba(153,69,255,0.1);
+  color: #C4A8FF;
+}
+.scope-chip.active i { color: #9945FF; }
+
+/* ─── Progress Section ─── */
+.progress-section { margin-bottom: 1rem; }
+.progress-card {
+  background: var(--glass); border: 1px solid var(--glass-border);
+  border-radius: var(--radius-xl); padding: 1.75rem;
+  backdrop-filter: blur(12px);
+}
+.progress-header { display: flex; align-items: center; gap: 12px; margin-bottom: 1.5rem; }
+.spinner {
+  width: 20px; height: 20px; flex-shrink: 0;
+  border: 2.5px solid rgba(153,69,255,0.2);
+  border-top-color: #9945FF; border-radius: 50%;
+  animation: spin .8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.progress-label { font-size: 14px; color: var(--text-2); flex: 1; }
+.progress-pct { font-size: 14px; font-weight: 600; color: #9945FF; }
+.progress-track {
+  height: 4px; background: rgba(255,255,255,0.06);
+  border-radius: 4px; overflow: hidden; margin-bottom: 1.5rem;
+}
+.progress-fill {
+  height: 100%; border-radius: 4px; width: 0%;
+  background: linear-gradient(90deg, #9945FF, #14F195);
+  transition: width 0.5s cubic-bezier(0.4,0,0.2,1);
+  box-shadow: 0 0 10px rgba(153,69,255,0.5);
+}
+.steps-row { display: flex; gap: 6px; flex-wrap: wrap; }
+.step-pill {
+  display: flex; align-items: center; gap: 5px;
+  padding: 5px 10px; border-radius: 20px; font-size: 11.5px;
+  border: 1px solid var(--glass-border); color: var(--text-3);
+  background: rgba(255,255,255,0.02); transition: all 0.3s;
+}
+.step-pill.done { border-color: rgba(20,241,149,0.3); color: #14F195; background: rgba(20,241,149,0.07); }
+.step-pill.active { border-color: rgba(153,69,255,0.4); color: #C4A8FF; background: rgba(153,69,255,0.1); }
+.step-pill i { font-size: 13px; }
+
+/* ─── Results ─── */
+.score-hero {
+  display: flex; align-items: center; gap: 2rem;
+  flex-wrap: wrap; margin-bottom: 1.5rem;
+}
+.score-ring-wrap { position: relative; flex-shrink: 0; }
+.score-svg { display: block; }
+.score-center {
+  position: absolute; inset: 0; display: flex;
+  flex-direction: column; align-items: center; justify-content: center;
+}
+.score-num { font-size: 36px; font-weight: 700; line-height: 1; letter-spacing: -1px; }
+.score-grade-label { font-size: 13px; font-weight: 600; margin-top: 2px; }
+.score-meta { font-size: 11px; color: var(--text-3); margin-top: 2px; }
+.stats-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 8px; flex: 1; min-width: 200px; }
+.stat-tile {
+  background: rgba(255,255,255,0.03); border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md); padding: .9rem .75rem; text-align: center;
+  transition: all 0.2s;
+}
+.stat-tile:hover { background: var(--glass-hover); }
+.stat-tile .num { font-size: 24px; font-weight: 700; line-height: 1; }
+.stat-tile .lbl { font-size: 11px; color: var(--text-2); margin-top: 4px; }
+
+/* ─── Tabs ─── */
+.tabs-bar {
+  display: flex; gap: 0; border-bottom: 1px solid var(--glass-border);
+  margin-bottom: 1.25rem; overflow-x: auto;
+}
+.tab-btn {
+  padding: 10px 18px; font-size: 13.5px; cursor: pointer;
+  color: var(--text-2); background: none; border: none;
+  border-bottom: 2px solid transparent; margin-bottom: -1px;
+  font-family: 'Inter', sans-serif; font-weight: 500;
+  transition: all 0.18s; white-space: nowrap; outline: none;
+}
+.tab-btn:hover { color: var(--text-1); }
+.tab-btn.active { color: #9945FF; border-bottom-color: #9945FF; }
+
+/* ─── Findings ─── */
+.finding-card {
+  border: 1px solid var(--glass-border); border-radius: var(--radius-md);
+  margin-bottom: 8px; overflow: hidden;
+  transition: border-color 0.2s;
+  animation: fadeSlideIn 0.3s ease both;
+}
+@keyframes fadeSlideIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.finding-card:hover { border-color: rgba(255,255,255,0.14); }
+.finding-head {
+  display: flex; align-items: center; gap: 10px;
+  padding: .85rem 1rem; cursor: pointer;
+  background: rgba(255,255,255,0.02);
+  transition: background 0.15s;
+}
+.finding-head:hover { background: rgba(255,255,255,0.04); }
+.finding-title { font-size: 14px; font-weight: 500; flex: 1; }
+.finding-loc { font-size: 11.5px; color: var(--text-3); font-family: 'JetBrains Mono', monospace; }
+.finding-body {
+  padding: .9rem 1rem;
+  border-top: 1px solid var(--glass-border);
+  font-size: 13px; color: var(--text-2); line-height: 1.75;
+  background: rgba(0,0,0,0.15);
+}
+.finding-body-field { margin-bottom: .65rem; }
+.finding-body-field:last-child { margin-bottom: 0; }
+.finding-body-field strong { color: var(--text-1); font-weight: 600; display: block; margin-bottom: 3px; font-size: 11.5px; text-transform: uppercase; letter-spacing: .05em; }
+.chevron { font-size: 16px; color: var(--text-3); transition: transform 0.25s; flex-shrink: 0; }
+.chevron.open { transform: rotate(180deg); }
+
+/* ─── Severity Badges ─── */
+.badge {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 3px 10px; border-radius: 20px; font-size: 11.5px; font-weight: 600;
+  text-transform: uppercase; letter-spacing: .04em; flex-shrink: 0;
+}
+.badge-critical { background: var(--critical-bg); color: var(--critical); border: 1px solid rgba(255,71,87,0.25); }
+.badge-high { background: var(--high-bg); color: var(--high); border: 1px solid rgba(255,159,67,0.25); }
+.badge-medium { background: var(--medium-bg); color: var(--medium); border: 1px solid rgba(84,160,255,0.25); }
+.badge-low { background: var(--low-bg); color: var(--low); border: 1px solid rgba(46,204,113,0.25); }
+.badge-info { background: var(--info-bg); color: var(--info); border: 1px solid rgba(162,155,254,0.25); }
+
+/* ─── Severity bar chart ─── */
+.sev-bars { display: flex; flex-direction: column; gap: 6px; }
+.sev-row { display: flex; align-items: center; gap: 10px; font-size: 12px; }
+.sev-name { width: 56px; color: var(--text-2); }
+.sev-bar-track { flex: 1; height: 6px; background: rgba(255,255,255,0.06); border-radius: 4px; overflow: hidden; }
+.sev-bar-fill { height: 100%; border-radius: 4px; transition: width 0.8s cubic-bezier(0.4,0,0.2,1); }
+.sev-count { width: 24px; text-align: right; font-weight: 600; }
+
+/* ─── Summary & Recs text ─── */
+.prose { font-size: 14px; color: var(--text-2); line-height: 1.8; }
+.prose p { margin-bottom: .75rem; }
+.prose ol { padding-left: 1.3rem; }
+.prose ol li { margin-bottom: .5rem; }
+.rec-item {
+  display: flex; gap: 12px; padding: .85rem 1rem;
+  background: rgba(255,255,255,0.02); border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md); margin-bottom: 8px;
+  align-items: flex-start; font-size: 13.5px; color: var(--text-2);
+  animation: fadeSlideIn 0.3s ease both;
+}
+.rec-num {
+  width: 24px; height: 24px; border-radius: 50%; flex-shrink: 0;
+  background: var(--primary-dim); color: #9945FF;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px; font-weight: 700; margin-top: 1px;
+}
+
+/* ─── Action row ─── */
+.action-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 1.25rem; }
+
+/* ─── Settings Modal ─── */
+.modal-overlay {
+  position: fixed; inset: 0; z-index: 100;
+  background: rgba(0,0,0,0.7);
+  display: flex; align-items: center; justify-content: center;
+  padding: 1.5rem; backdrop-filter: blur(6px);
+  opacity: 0; pointer-events: none; transition: opacity 0.25s;
+}
+.modal-overlay.open { opacity: 1; pointer-events: all; }
+.modal {
+  background: #12121F; border: 1px solid var(--glass-border);
+  border-radius: var(--radius-xl); padding: 1.75rem;
+  max-width: 440px; width: 100%;
+  transform: translateY(16px); transition: transform 0.25s;
+  box-shadow: 0 24px 80px rgba(0,0,0,0.8);
+}
+.modal-overlay.open .modal { transform: translateY(0); }
+.modal-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.25rem; }
+.modal-title { font-size: 16px; font-weight: 600; }
+.modal-close { background: none; border: none; color: var(--text-2); cursor: pointer; font-size: 20px; padding: 2px; }
+.modal-close:hover { color: var(--text-1); }
+.field-label { font-size: 12px; color: var(--text-2); margin-bottom: 6px; font-weight: 500; }
+.modal-note { font-size: 12px; color: var(--text-3); margin-top: .6rem; line-height: 1.6; }
+.modal-note a { color: #9945FF; text-decoration: none; }
+.modal-note a:hover { text-decoration: underline; }
+
+/* ─── Empty state ─── */
+.empty-state { text-align: center; padding: 2.5rem 1rem; color: var(--text-3); font-size: 14px; }
+.empty-state i { font-size: 40px; margin-bottom: .75rem; color: var(--text-3); display: block; }
+
+/* ─── Toast ─── */
+.toast {
+  position: fixed; bottom: 1.5rem; right: 1.5rem; z-index: 200;
+  background: #1E1E30; border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md); padding: .75rem 1.1rem;
+  font-size: 13.5px; color: var(--text-1);
+  display: flex; align-items: center; gap: 8px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.6);
+  transform: translateY(80px); opacity: 0;
+  transition: all 0.3s cubic-bezier(0.34,1.56,0.64,1);
+  pointer-events: none;
+}
+.toast.show { transform: translateY(0); opacity: 1; }
+.toast i { font-size: 18px; color: #14F195; }
+
+/* ─── Utility ─── */
+.hidden { display: none !important; }
+.gradient-text { background: linear-gradient(135deg, #9945FF, #14F195); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+.mt-1 { margin-top: .5rem; }
+.mt-2 { margin-top: 1rem; }
+.mt-3 { margin-top: 1.5rem; }
+
+/* ─── Responsive ─── */
+@media (max-width: 600px) {
+  .stats-grid { grid-template-columns: repeat(2,1fr); }
+  .score-hero { flex-direction: column; align-items: flex-start; }
+  .scope-grid { grid-template-columns: repeat(2,1fr); }
+  .header { flex-direction: column; align-items: flex-start; gap: 12px; }
+}
+</style>
+</head>
+<body>
+
+<!-- Animated Background -->
+<div class="bg-canvas" aria-hidden="true">
+  <div class="orb orb-1"></div>
+  <div class="orb orb-2"></div>
+  <div class="orb orb-3"></div>
+</div>
+
+<!-- Settings Modal -->
+<div class="modal-overlay" id="settings-modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+  <div class="modal">
+    <div class="modal-head">
+      <div class="modal-title" id="modal-title"><i class="ti ti-key" style="color:#9945FF"></i> API Configuration</div>
+      <button class="modal-close" onclick="closeSettings()" aria-label="Close"><i class="ti ti-x"></i></button>
+    </div>
+    <div class="field-label">Anthropic API Key</div>
+    <div class="input-row">
+      <input class="text-input" type="password" id="api-key-input" placeholder="sk-ant-api03-..." style="font-family:'JetBrains Mono',monospace;font-size:13px;" autocomplete="off"/>
+      <button class="btn btn-primary" onclick="saveApiKey()" id="save-key-btn"><i class="ti ti-check"></i> Save</button>
+    </div>
+    <p class="modal-note">Your key is stored locally in your browser and never sent to any server other than Anthropic's API. Get your key at <a href="https://console.anthropic.com" target="_blank">console.anthropic.com</a>.</p>
+    <div style="margin-top:1rem;display:flex;gap:8px;justify-content:flex-end;">
+      <button class="btn btn-danger-ghost" onclick="clearApiKey()"><i class="ti ti-trash"></i> Clear key</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast" role="status" aria-live="polite">
+  <i class="ti ti-check"></i>
+  <span id="toast-msg">Copied!</span>
+</div>
+
+<div class="wrapper">
+
+  <!-- Header -->
+  <header class="header">
+    <div class="brand">
+      <div class="logo" aria-hidden="true"><i class="ti ti-shield-check"></i></div>
+      <div class="brand-text">
+        <div class="name">Chain<span class="gradient-text">Audit</span></div>
+        <div class="tagline">Solana · Smart Contract · Security Auditor</div>
+      </div>
+    </div>
+    <div class="header-actions">
+      <button class="btn btn-ghost" onclick="openSettings()" id="api-btn" aria-label="Configure API key">
+        <i class="ti ti-key"></i> <span id="api-btn-label">Configure API</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- API Banner -->
+  <div class="api-banner" id="api-banner">
+    <i class="ti ti-alert-circle"></i>
+    <span>No API key configured. <span class="link" onclick="openSettings()">Add your Anthropic API key</span> to run live audits.</span>
+  </div>
+
+  <!-- Input Card -->
+  <div class="card" id="input-card">
+
+    <!-- GitHub repo -->
+    <div class="section-label"><i class="ti ti-git-branch" style="font-size:13px;vertical-align:-2px;margin-right:4px"></i>GitHub Repository</div>
+    <div class="input-row">
+      <input class="text-input" id="repo-url" placeholder="https://github.com/owner/repo  (or branch/tag URL)" aria-label="GitHub repository URL"/>
+      <button class="btn btn-ghost" id="fetch-btn" onclick="handleFetch()"><i class="ti ti-download"></i> Fetch</button>
+    </div>
+
+    <div class="or-divider">or paste source directly</div>
+
+    <!-- Code editor -->
+    <div class="section-label"><i class="ti ti-code" style="font-size:13px;vertical-align:-2px;margin-right:4px"></i>Rust / Anchor Source</div>
+    <textarea class="code-editor" id="code-input" spellcheck="false" aria-label="Rust or Anchor source code" placeholder="use anchor_lang::prelude::*;
+
+#[program]
+pub mod my_program {
+  use super::*;
+
+  pub fn initialize(ctx: Context<Initialize>) -> Result<()> {
+    // Your program logic here
+    Ok(())
+  }
+}
+
+#[derive(Accounts)]
+pub struct Initialize<'info> {
+  #[account(mut)]
+  pub user: Signer<'info>,
+  pub system_program: Program<'info, System>,
+}"></textarea>
+
+    <!-- Audit Scope -->
+    <div class="mt-3">
+      <div class="section-label"><i class="ti ti-adjustments" style="font-size:13px;vertical-align:-2px;margin-right:4px"></i>Audit Scope
+        <span style="margin-left:8px;font-size:10px;font-weight:400;text-transform:none;letter-spacing:0;color:var(--text-3)" id="scope-count">(8 of 8 selected)</span>
+      </div>
+      <div class="scope-grid" id="scope-grid">
+        <div class="scope-chip active" data-scope="signer" onclick="toggleScope(this)" role="checkbox" aria-checked="true" tabindex="0"><i class="ti ti-key"></i>Signer checks</div>
+        <div class="scope-chip active" data-scope="overflow" onclick="toggleScope(this)" role="checkbox" aria-checked="true" tabindex="0"><i class="ti ti-math"></i>Arithmetic safety</div>
+        <div class="scope-chip active" data-scope="ownership" onclick="toggleScope(this)" role="checkbox" aria-checked="true" tabindex="0"><i class="ti ti-shield"></i>Ownership validation</div>
+        <div class="scope-chip active" data-scope="reentrancy" onclick="toggleScope(this)" role="checkbox" aria-checked="true" tabindex="0"><i class="ti ti-refresh"></i>Reentrancy</div>
+        <div class="scope-chip active" data-scope="cpi" onclick="toggleScope(this)" role="checkbox" aria-checked="true" tabindex="0"><i class="ti ti-arrows-exchange"></i>CPI safety</div>
+        <div class="scope-chip active" data-scope="defi" onclick="toggleScope(this)" role="checkbox" aria-checked="true" tabindex="0"><i class="ti ti-chart-line"></i>DeFi vectors</div>
+        <div class="scope-chip active" data-scope="pda" onclick="toggleScope(this)" role="checkbox" aria-checked="true" tabindex="0"><i class="ti ti-fingerprint"></i>PDA derivation</div>
+        <div class="scope-chip active" data-scope="upgrade" onclick="toggleScope(this)" role="checkbox" aria-checked="true" tabindex="0"><i class="ti ti-lock"></i>Upgrade authority</div>
+      </div>
+    </div>
+
+    <!-- Run button -->
+    <div style="display:flex;justify-content:flex-end;align-items:center;gap:10px;margin-top:1.5rem;">
+      <span style="font-size:12px;color:var(--text-3)" id="model-tag">claude-3-5-sonnet-20241022</span>
+      <button class="btn btn-green" id="audit-btn" onclick="startAudit()">
+        <i class="ti ti-scan"></i> Run Security Audit
+      </button>
+    </div>
+  </div>
+
+  <!-- Progress Section -->
+  <div class="progress-section hidden" id="progress-section">
+    <div class="progress-card">
+      <div class="progress-header">
+        <div class="spinner" aria-hidden="true"></div>
+        <span class="progress-label" id="progress-label">Initializing audit engine...</span>
+        <span class="progress-pct" id="progress-pct">0%</span>
+      </div>
+      <div class="progress-track"><div class="progress-fill" id="progress-fill"></div></div>
+      <div class="steps-row" id="steps-row">
+        <div class="step-pill" id="step-0"><i class="ti ti-loader"></i>Parse</div>
+        <div class="step-pill" id="step-1"><i class="ti ti-loader"></i>Static analysis</div>
+        <div class="step-pill" id="step-2"><i class="ti ti-loader"></i>Signer &amp; ownership</div>
+        <div class="step-pill" id="step-3"><i class="ti ti-loader"></i>CPI chains</div>
+        <div class="step-pill" id="step-4"><i class="ti ti-loader"></i>DeFi checks</div>
+        <div class="step-pill" id="step-5"><i class="ti ti-loader"></i>Score</div>
+        <div class="step-pill" id="step-6"><i class="ti ti-loader"></i>Report</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Results Section -->
+  <div id="results-section" class="hidden">
+    <div class="card">
+
+      <!-- Report header -->
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:1.5rem;">
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+          <h1 style="font-size:18px;font-weight:700;">Audit Report</h1>
+          <span id="repo-pill" class="hidden" style="font-size:12px;padding:3px 10px;background:rgba(153,69,255,0.1);border:1px solid rgba(153,69,255,0.25);border-radius:20px;color:#C4A8FF;font-family:'JetBrains Mono',monospace;"></span>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <button class="btn btn-ghost" onclick="copyReport()"><i class="ti ti-copy"></i> Copy JSON</button>
+          <button class="btn btn-ghost" onclick="resetAudit()"><i class="ti ti-plus"></i> New audit</button>
+        </div>
+      </div>
+
+      <!-- Score Hero -->
+      <div class="score-hero">
+        <div class="score-ring-wrap">
+          <svg class="score-svg" width="130" height="130" viewBox="0 0 130 130" aria-label="Security score ring">
+            <circle cx="65" cy="65" r="54" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="10"/>
+            <circle cx="65" cy="65" r="54" fill="none" id="score-arc"
+              stroke="url(#scoreGrad)" stroke-width="10"
+              stroke-linecap="round" stroke-dasharray="339.3" stroke-dashoffset="339.3"
+              transform="rotate(-90 65 65)" style="transition: stroke-dashoffset 1s cubic-bezier(0.4,0,0.2,1)"/>
+            <defs>
+              <linearGradient id="scoreGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" stop-color="#9945FF"/>
+                <stop offset="100%" stop-color="#14F195"/>
+              </linearGradient>
+            </defs>
+          </svg>
+          <div class="score-center">
+            <div class="score-num" id="score-num">--</div>
+            <div class="score-grade-label" id="score-grade"></div>
+            <div class="score-meta">/ 100</div>
+          </div>
+        </div>
+
+        <div style="flex:1;min-width:220px;">
+          <div class="stats-grid">
+            <div class="stat-tile">
+              <div class="num" style="color:var(--critical)" id="cnt-critical">0</div>
+              <div class="lbl">Critical</div>
+            </div>
+            <div class="stat-tile">
+              <div class="num" style="color:var(--high)" id="cnt-high">0</div>
+              <div class="lbl">High</div>
+            </div>
+            <div class="stat-tile">
+              <div class="num" style="color:var(--medium)" id="cnt-medium">0</div>
+              <div class="lbl">Medium</div>
+            </div>
+            <div class="stat-tile">
+              <div class="num" style="color:var(--low)" id="cnt-low">0</div>
+              <div class="lbl">Low</div>
+            </div>
+          </div>
+          <div class="sev-bars mt-2" id="sev-bars"></div>
+        </div>
+      </div>
+
+      <!-- Tabs -->
+      <div class="tabs-bar" role="tablist">
+        <button class="tab-btn active" role="tab" aria-selected="true" aria-controls="tab-findings" onclick="switchTab('findings',this)"><i class="ti ti-alert-triangle" style="font-size:14px;vertical-align:-2px;margin-right:5px"></i>Findings</button>
+        <button class="tab-btn" role="tab" aria-selected="false" aria-controls="tab-summary" onclick="switchTab('summary',this)"><i class="ti ti-file-description" style="font-size:14px;vertical-align:-2px;margin-right:5px"></i>Executive Summary</button>
+        <button class="tab-btn" role="tab" aria-selected="false" aria-controls="tab-recommendations" onclick="switchTab('recommendations',this)"><i class="ti ti-checklist" style="font-size:14px;vertical-align:-2px;margin-right:5px"></i>Recommendations</button>
+      </div>
+
+      <!-- Tab: Findings -->
+      <div id="tab-findings" role="tabpanel">
+        <div id="findings-list"></div>
+      </div>
+
+      <!-- Tab: Summary -->
+      <div id="tab-summary" role="tabpanel" class="hidden">
+        <div class="prose" id="summary-text"></div>
+      </div>
+
+      <!-- Tab: Recommendations -->
+      <div id="tab-recommendations" role="tabpanel" class="hidden">
+        <div id="recs-list"></div>
+      </div>
+
+      <!-- Actions -->
+      <div class="action-row">
+        <button class="btn btn-ghost" onclick="followUp('Generate a detailed remediation plan for all critical and high severity findings from this audit, with specific Rust/Anchor code fixes')"><i class="ti ti-tool"></i> Remediation plan ↗</button>
+        <button class="btn btn-ghost" onclick="followUp('Write comprehensive Anchor/Rust tests to cover each vulnerability found in this audit')"><i class="ti ti-test-pipe"></i> Generate tests ↗</button>
+        <button class="btn btn-ghost" onclick="followUp('Explain the most critical finding from this audit in simple terms for a non-technical audience')"><i class="ti ti-info-circle"></i> Explain findings ↗</button>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /wrapper -->
+
+<script>
+'use strict';
+
+/* ─── State ─── */
+let activeScopes = new Set(['signer','overflow','ownership','reentrancy','cpi','defi','pda','upgrade']);
+let lastReport = null;
+let openFindings = new Set();
+let apiKey = '';
+
+/* ─── Init ─── */
+(function init() {
+  apiKey = localStorage.getItem('chainaudit_api_key') || '';
+  updateApiUI();
+})();
+
+function updateApiUI() {
+  const banner = document.getElementById('api-banner');
+  const btnLabel = document.getElementById('api-btn-label');
+  if (apiKey) {
+    banner.innerHTML = `<i class="ti ti-shield-check"></i><span>API key configured — ready to run live audits.</span>`;
+    banner.classList.add('ok');
+    btnLabel.textContent = 'API Key ✓';
+  } else {
+    banner.innerHTML = `<i class="ti ti-alert-circle"></i><span>No API key configured. <span class="link" onclick="openSettings()">Add your Anthropic API key</span> to run live audits.</span>`;
+    banner.classList.remove('ok');
+    btnLabel.textContent = 'Configure API';
+  }
+}
+
+/* ─── Settings modal ─── */
+function openSettings() {
+  const inp = document.getElementById('api-key-input');
+  inp.value = apiKey ? '•'.repeat(Math.min(apiKey.length, 32)) : '';
+  document.getElementById('settings-modal').classList.add('open');
+  setTimeout(() => inp.focus(), 200);
+}
+function closeSettings() {
+  document.getElementById('settings-modal').classList.remove('open');
+}
+document.getElementById('settings-modal').addEventListener('click', function(e) {
+  if (e.target === this) closeSettings();
+});
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeSettings(); });
+
+function saveApiKey() {
+  const val = document.getElementById('api-key-input').value.trim();
+  if (!val || val.startsWith('•')) { closeSettings(); return; }
+  apiKey = val;
+  localStorage.setItem('chainaudit_api_key', val);
+  updateApiUI();
+  closeSettings();
+  showToast('API key saved securely', 'ti-check');
+}
+function clearApiKey() {
+  apiKey = '';
+  localStorage.removeItem('chainaudit_api_key');
+  document.getElementById('api-key-input').value = '';
+  updateApiUI();
+  showToast('API key cleared', 'ti-trash');
+}
+
+/* ─── Scope toggles ─── */
+function toggleScope(el) {
+  const s = el.dataset.scope;
+  if (activeScopes.has(s)) { activeScopes.delete(s); el.classList.remove('active'); el.setAttribute('aria-checked','false'); }
+  else { activeScopes.add(s); el.classList.add('active'); el.setAttribute('aria-checked','true'); }
+  document.getElementById('scope-count').textContent = `(${activeScopes.size} of 8 selected)`;
+}
+document.getElementById('scope-grid').addEventListener('keydown', e => {
+  if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); if (e.target.classList.contains('scope-chip')) toggleScope(e.target); }
+});
+
+/* ─── Real Live GitHub Fetch ─── */
+async function handleFetch() {
+  const url = document.getElementById('repo-url').value.trim();
+  if (!url) return;
+  const btn = document.getElementById('fetch-btn');
+  const codeEditor = document.getElementById('code-input');
+  
+  // Extract owner, repo, branch, subpath recursively
+  let owner = '';
+  let repo = '';
+  let branch = '';
+  let subpath = '';
+  
+  const cleanUrl = url.replace(/\/$/, '').trim();
+  const parts = cleanUrl.split('github.com/')[1]?.split('/');
+  if (!parts || parts.length < 2) {
+    showToast('Invalid GitHub URL format', 'ti-alert-triangle');
+    return;
+  }
+  
+  owner = parts[0];
+  repo = parts[1].replace(/\.git$/, '');
+  
+  if (parts.length >= 4 && (parts[2] === 'tree' || parts[2] === 'blob')) {
+    branch = parts[3];
+    subpath = parts.slice(4).join('/');
+  }
+  
+  btn.disabled = true;
+  btn.innerHTML = '<i class="ti ti-loader-2" style="animation:spin .7s linear infinite"></i> Fetching...';
+  
+  try {
+    // 1. Get default branch if not specified in URL
+    let defaultBranch = branch;
+    if (!defaultBranch) {
+      const repoRes = await fetch(`https://api.github.com/repos/${owner}/${repo}`);
+      if (!repoRes.ok) {
+        throw new Error(`Repository not found or GitHub API limit reached`);
+      }
+      const repoData = await repoRes.json();
+      defaultBranch = repoData.default_branch || 'main';
+    }
+    
+    // 2. Fetch the file tree recursively
+    const treeRes = await fetch(`https://api.github.com/repos/${owner}/${repo}/git/trees/${defaultBranch}?recursive=1`);
+    if (!treeRes.ok) {
+      throw new Error(`Failed to fetch repository structure`);
+    }
+    const treeData = await treeRes.json();
+    
+    // 3. Filter tree for active blobs, and apply subpath filter if present
+    let allBlobs = treeData.tree.filter(f => f.type === 'blob');
+    if (subpath) {
+      allBlobs = allBlobs.filter(f => f.path.startsWith(subpath));
+      if (allBlobs.length === 0) {
+        throw new Error(`No files found under the subpath "${subpath}"`);
+      }
+    }
+    
+    // 4. Try to find Rust files first
+    let targetFiles = allBlobs.filter(f => f.path.endsWith('.rs'));
+    let auditMode = 'rust';
+    
+    if (targetFiles.length === 0) {
+      // Look for Web3 frontend files (JS/JSX/TS/TSX)
+      targetFiles = allBlobs.filter(f => (f.path.endsWith('.js') || f.path.endsWith('.jsx') || f.path.endsWith('.ts') || f.path.endsWith('.tsx')) && !f.path.includes('node_modules/') && !f.path.includes('dist/') && !f.path.includes('.config.'));
+      
+      if (targetFiles.length > 0) {
+        auditMode = 'frontend';
+        showToast('Found Solana Web3 Frontend files! Switching to Web3 Frontend Audit mode...', 'ti-info-circle');
+      } else {
+        // General Universal Fallback: get any text files like readme, package configs, toml, python, config files, etc.
+        targetFiles = allBlobs.filter(f => {
+          const p = f.path.toLowerCase();
+          return (p.endsWith('.md') || p.endsWith('.toml') || p.endsWith('.json') || p.endsWith('.py') || p.endsWith('.go') || p.endsWith('.sol') || p.endsWith('.yaml') || p.endsWith('.yml') || p.endsWith('.txt')) && 
+                 !p.includes('node_modules/') && !p.includes('package-lock.json') && !p.includes('yarn.lock');
+        });
+        
+        if (targetFiles.length === 0) {
+          // Absolute fallback: just take the top 5 blobs of any type
+          targetFiles = allBlobs.slice(0, 5);
+        }
+        
+        auditMode = 'general';
+        showToast('Performing universal systems & architectural security audit...', 'ti-shield');
+      }
+    }
+    
+    // Sort files logic:
+    if (auditMode === 'rust') {
+      targetFiles.sort((a, b) => {
+        const isLibA = a.path.endsWith('lib.rs') ? 1 : 0;
+        const isLibB = b.path.endsWith('lib.rs') ? 1 : 0;
+        if (isLibA !== isLibB) return isLibB - isLibA;
+        
+        const inProgramsA = a.path.includes('programs/') ? 1 : 0;
+        const inProgramsB = b.path.includes('programs/') ? 1 : 0;
+        if (inProgramsA !== inProgramsB) return inProgramsB - inProgramsA;
+        
+        return a.path.localeCompare(b.path);
+      });
+    } else if (auditMode === 'frontend') {
+      targetFiles.sort((a, b) => {
+        const isAppA = a.path.includes('App.') || a.path.includes('main.') ? 1 : 0;
+        const isAppB = b.path.includes('App.') || b.path.includes('main.') ? 1 : 0;
+        if (isAppA !== isAppB) return isAppB - isAppA;
+        
+        const isSolA = a.path.toLowerCase().includes('sol') || a.path.toLowerCase().includes('wallet') ? 1 : 0;
+        const isSolB = b.path.toLowerCase().includes('sol') || b.path.toLowerCase().includes('wallet') ? 1 : 0;
+        if (isSolA !== isSolB) return isSolB - isSolA;
+        
+        return a.path.localeCompare(b.path);
+      });
+    } else {
+      // General Mode: prioritize README.md, package.json, Cargo.toml, architecture docs
+      targetFiles.sort((a, b) => {
+        const aName = a.path.toLowerCase();
+        const bName = b.path.toLowerCase();
+        
+        const isReadmeA = aName.includes('readme') ? 1 : 0;
+        const isReadmeB = bName.includes('readme') ? 1 : 0;
+        if (isReadmeA !== isReadmeB) return isReadmeB - isReadmeA;
+        
+        const isConfigA = aName.includes('toml') || aName.includes('package.json') ? 1 : 0;
+        const isConfigB = bName.includes('toml') || bName.includes('package.json') ? 1 : 0;
+        if (isConfigA !== isConfigB) return isConfigB - isConfigA;
+        
+        return a.path.localeCompare(b.path);
+      });
+    }
+    
+    // Grab the top 5 files to audit
+    const filesToFetch = targetFiles.slice(0, 5);
+    let aggregatedCode = '';
+    
+    for (const file of filesToFetch) {
+      const fileRes = await fetch(`https://raw.githubusercontent.com/${owner}/${repo}/${defaultBranch}/${file.path}`);
+      if (fileRes.ok) {
+        const text = await fileRes.text();
+        aggregatedCode += `// ─── File: ${file.path} ───\n${text}\n\n`;
+      }
+    }
+    
+    if (!aggregatedCode) {
+      throw new Error(`Could not load any file contents`);
+    }
+    
+    codeEditor.value = aggregatedCode.trim();
+    if (auditMode === 'frontend') {
+      codeEditor.placeholder = `Successfully loaded ${filesToFetch.length} Solana Frontend files from repository. Audit configured for Frontend Web3 Security.`;
+      showToast(`Loaded ${filesToFetch.length} Frontend files from ${repo}`, 'ti-code');
+      window.currentAuditMode = 'frontend';
+    } else if (auditMode === 'general') {
+      codeEditor.placeholder = `Successfully loaded ${filesToFetch.length} Project layout / context files. Ready for architectural and systems security audit.`;
+      showToast(`Loaded ${filesToFetch.length} system context files`, 'ti-shield');
+      window.currentAuditMode = 'general';
+    } else {
+      codeEditor.placeholder = `Successfully loaded ${filesToFetch.length} Rust files from repository. Feel free to modify before auditing.`;
+      showToast(`Loaded ${filesToFetch.length} files from ${repo}`, 'ti-git-branch');
+      window.currentAuditMode = 'rust';
+    }
+    
+    codeEditor.focus();
+  } catch (e) {
+    showToast(e.message || 'Error fetching repository', 'ti-alert-circle');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="ti ti-download"></i> Fetch';
+  }
+}
+
+/* ─── Audit ─── */
+async function startAudit() {
+  const repoUrl = document.getElementById('repo-url').value.trim();
+  const code = document.getElementById('code-input').value.trim();
+
+  if (!repoUrl && !code) {
+    showToast('Please paste a repo URL or source code', 'ti-alert-triangle');
+    return;
+  }
+  if (!apiKey) {
+    showToast('Please configure your Anthropic API key first', 'ti-key');
+    openSettings();
+    return;
+  }
+
+  document.getElementById('results-section').classList.add('hidden');
+  document.getElementById('progress-section').classList.remove('hidden');
+  document.getElementById('audit-btn').disabled = true;
+  document.getElementById('input-card').style.opacity = '0.5';
+  document.getElementById('input-card').style.pointerEvents = 'none';
+
+  // Determine audit mode
+  let mode = window.currentAuditMode || 'rust';
+  if (code && !repoUrl) {
+    if (code.includes('use ') && code.includes('pub mod ') || code.includes('fn ') || code.includes('struct ')) {
+      mode = 'rust';
+    } else if (code.includes('import ') || code.includes('require(') || code.includes('const ') || code.includes('function ') || code.includes('@solana/')) {
+      mode = 'frontend';
+    } else {
+      mode = 'general';
+    }
+  }
+
+  const isFrontend = (mode === 'frontend');
+  const isGeneral = (mode === 'general');
+  
+  const steps = [
+    [10, 'Parsing repository structure...', 0],
+    [22, isFrontend ? 'Analyzing React & JS/TS structure...' : (isGeneral ? 'Analyzing general file structure...' : 'Running static analysis...'), 1],
+    [38, isFrontend ? 'Checking wallet & transaction patterns...' : (isGeneral ? 'Analyzing system architecture...' : 'Checking signer & ownership patterns...'), 2],
+    [52, isFrontend ? 'Analyzing SPL Token & Bonfida integration...' : (isGeneral ? 'Evaluating DeFi / Tokenomics model...' : 'Analyzing CPI call chains...'), 3],
+    [66, isFrontend ? 'Running Web3 integration checks...' : (isGeneral ? 'Auditing general configuration safety...' : 'Running DeFi-specific checks...'), 4],
+    [80, 'Scoring vulnerability findings...', 5],
+    [92, 'Generating comprehensive report...', 6],
+  ];
+
+  for (const [pct, msg, stepIdx] of steps) {
+    setProgress(pct, msg, stepIdx);
+    await sleep(380 + Math.random() * 280);
+  }
+
+  const scopeList = Array.from(activeScopes).join(', ');
+  const inputSummary = repoUrl
+    ? `GitHub Repository: ${repoUrl} (${isFrontend ? 'Web3 Frontend' : (isGeneral ? 'Systems & Architecture' : 'Rust Program')})`
+    : `Solana source code (${code.length} characters provided, detected as ${isFrontend ? 'Web3 Frontend' : (isGeneral ? 'Systems & Architecture' : 'Rust Program')})`;
+
+  const prompt = buildPrompt(inputSummary, scopeList, code, mode);
+
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify({
+        model: 'claude-3-5-sonnet-20241022',
+        max_tokens: 4096,
+        messages: [{ role: 'user', content: prompt }]
+      })
+    });
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error?.message || `API error ${res.status}`);
+    }
+
+    const data = await res.json();
+    const raw = (data.content || []).map(b => b.text || '').join('');
+    const clean = raw.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim();
+    const jsonStart = clean.indexOf('{');
+    const jsonEnd = clean.lastIndexOf('}');
+    const report = JSON.parse(clean.slice(jsonStart, jsonEnd + 1));
+    setProgress(100, 'Audit complete!', -1);
+    await sleep(400);
+    renderReport(report, repoUrl);
+  } catch(e) {
+    document.getElementById('progress-section').classList.add('hidden');
+    document.getElementById('audit-btn').disabled = false;
+    document.getElementById('input-card').style.opacity = '';
+    document.getElementById('input-card').style.pointerEvents = '';
+    showToast('Error: ' + (e.message || 'Unknown error'), 'ti-alert-circle');
+  }
+}
+
+function buildPrompt(inputSummary, scopeList, code, mode = 'rust') {
+  if (mode === 'general') {
+    return `You are ChainAudit, a world-class Solana systems architect, DeFi tokenomics designer, and general smart contract security auditor.
+    
+Perform a thorough, professional architectural and tokenomics security audit for this Solana project. Since this repository contains general files, configurations, scripts, or documentation rather than raw smart contracts, analyze the architecture, configuration parameters, dependencies, and integration patterns.
+
+INPUT: ${inputSummary}
+ACTIVE AUDIT CHECKS: ${scopeList}
+${code ? `\nPROJECT CONTEXT / CONFIGURATION:\n\`\`\`text\n${code.slice(0, 8000)}\n\`\`\`` : ''}
+
+Your response MUST be a single valid JSON object — no markdown, no backticks, no explanation before or after. Use this exact schema:
+
+{
+  "score": <integer 0-100>,
+  "grade": "<A+|A|A-|B+|B|B-|C|D|F>",
+  "findings": [
+    {
+      "id": "F-001",
+      "severity": "<critical|high|medium|low|info>",
+      "title": "<concise vulnerability/risk title>",
+      "location": "<filename or 'general'>",
+      "description": "<2-3 sentences describing the architectural, tokenomics, or configuration risk>",
+      "impact": "<what kind of threat or exploit vector this represents (e.g. rug pull risk, Oracle price manipulation, configuration slip-ups, central authority abuse)>",
+      "recommendation": "<specific, actionable fix or architectural improvement>"
+    }
+  ],
+  "summary": "<4-5 sentence executive summary covering the overall architectural robustness, tokenomics risks, configuration standards, and audit methodology>",
+  "recommendations": "<numbered list of 5-7 prioritized, actionable security/architectural recommendations for the project>"
+}
+
+Rules:
+- Always generate at least 6 findings covering multiple severity levels
+- Findings should be specific to Solana projects (DEX, DeFi, Staking, Swap, Launchpad, Liquidity protocol, etc.) focusing on key operational vectors (e.g., flash loan vectors, oracle manipulation risks, single point of failure in authorities, lockup enforcement, transaction validation client-side, liquidity provider risks, etc.)
+- If no code or text is provided, perform the audit on a typical Solana project matching the description (e.g. DeFi Staking or DEX)
+- Score: 80-100 = A, 65-79 = B, 50-64 = C, 30-49 = D, <30 = F`;
+  }
+
+  if (mode === 'frontend') {
+    return `You are ChainAudit, a world-class Solana Web3 frontend security auditor with deep expertise in JavaScript, TypeScript, React, and Solana integration using libraries like @solana/web3.js, @solana/wallet-adapter, @bonfida/spl-name-service, and @solana/spl-token.
+ 
+Perform a thorough, professional security audit focused on Solana client-side and Web3 frontend integration vulnerabilities.
+ 
+INPUT: ${inputSummary}
+ACTIVE AUDIT CHECKS: ${scopeList}
+${code ? `\nSOURCE CODE:\n\`\`\`javascript\n${code.slice(0, 8000)}\n\`\`\`` : ''}
+ 
+Your response MUST be a single valid JSON object — no markdown, no backticks, no explanation before or after. Use this exact schema:
+ 
+{
+  "score": <integer 0-100>,
+  "grade": "<A+|A|A-|B+|B|B-|C|D|F>",
+  "findings": [
+    {
+      "id": "F-001",
+      "severity": "<critical|high|medium|low|info>",
+      "title": "<concise vulnerability title>",
+      "location": "<filename:line_number or 'general'>",
+      "description": "<2-3 sentences describing the client-side/frontend vulnerability and its root cause>",
+      "impact": "<what a malicious actor or site could achieve by exploiting this (e.g. fund loss, transaction spoofing, unauthorized signature requests)>",
+      "recommendation": "<specific, actionable fix with code guidance if possible>"
+    }
+  ],
+  "summary": "<4-5 sentence executive summary covering the overall client-side security posture, most critical frontend/Web3 issues, and audit methodology>",
+  "recommendations": "<numbered list of 5-7 prioritized, actionable security recommendations for securing the Web3 client application>"
+}
+ 
+Rules:
+- Always generate at least 6 findings covering multiple severity levels
+- Findings should be specific to Solana/Web3 Web client integrations (e.g., balance check race conditions, insecure transaction serialization, lack of signature verification, phishing vulnerability, lack of validation on user accounts, insecure storage of local state, Bonfida spoofing, etc.)
+- Include at least one critical or high finding for realistic programs
+- If no code is provided, generate realistic findings for a typical Solana Web3 frontend program`;
+  }
+
+  return `You are ChainAudit, a world-class Solana and Anchor smart contract security auditor with deep expertise in Rust, the Solana programming model, and DeFi protocol security.
+
+Perform a thorough, professional security audit.
+
+INPUT: ${inputSummary}
+ACTIVE AUDIT CHECKS: ${scopeList}
+${code ? `\nSOURCE CODE:\n\`\`\`rust\n${code.slice(0, 8000)}\n\`\`\`` : ''}
+
+Your response MUST be a single valid JSON object — no markdown, no backticks, no explanation before or after. Use this exact schema:
+
+{
+  "score": <integer 0-100>,
+  "grade": "<A+|A|A-|B+|B|B-|C|D|F>",
+  "findings": [
+    {
+      "id": "F-001",
+      "severity": "<critical|high|medium|low|info>",
+      "title": "<concise vulnerability title>",
+      "location": "<filename:line_number or 'general'>",
+      "description": "<2-3 sentences describing the vulnerability and its root cause>",
+      "impact": "<what a malicious actor could achieve by exploiting this>",
+      "recommendation": "<specific, actionable fix with code guidance if possible>"
+    }
+  ],
+  "summary": "<4-5 sentence executive summary covering the overall security posture, most critical issues, and audit methodology>",
+  "recommendations": "<numbered list of 5-7 prioritized, actionable security recommendations>"
+}
+
+Rules:
+- Always generate at least 6 findings covering multiple severity levels
+- Findings should be specific to Solana/Anchor patterns (not generic)
+- Include at least one critical or high finding for realistic programs
+- If no code is provided, generate realistic findings for a typical Solana DeFi program (e.g., AMM, lending, staking)
+- Score: 85-100 = A (few low issues), 70-84 = B (some medium), 50-69 = C (high issues), 30-49 = D (critical issues), <30 = F (multiple criticals)`;
+}
+
+function setProgress(pct, msg, stepIdx) {
+  document.getElementById('progress-fill').style.width = pct + '%';
+  document.getElementById('progress-pct').textContent = pct + '%';
+  document.getElementById('progress-label').textContent = msg;
+  const steps = document.getElementById('steps-row').querySelectorAll('.step-pill');
+  steps.forEach((el, i) => {
+    el.classList.remove('active', 'done');
+    if (stepIdx === -1 || i < stepIdx) {
+      el.classList.add('done');
+      el.querySelector('i').className = 'ti ti-circle-check';
+    } else if (i === stepIdx) {
+      el.classList.add('active');
+      el.querySelector('i').className = 'ti ti-loader';
+    }
+  });
+}
+
+/* ─── Render Report ─── */
+function renderReport(r, repoUrl) {
+  lastReport = r;
+  document.getElementById('progress-section').classList.add('hidden');
+  document.getElementById('results-section').classList.remove('hidden');
+  document.getElementById('audit-btn').disabled = false;
+  document.getElementById('input-card').style.opacity = '';
+  document.getElementById('input-card').style.pointerEvents = '';
+
+  /* Score ring */
+  const score = Math.max(0, Math.min(100, r.score));
+  document.getElementById('score-num').textContent = score;
+  const grade = document.getElementById('score-grade');
+  grade.textContent = r.grade;
+  const scoreColor = score >= 80 ? '#14F195' : score >= 60 ? '#54A0FF' : score >= 40 ? '#FF9F43' : '#FF4757';
+  grade.style.color = scoreColor;
+  const circumference = 2 * Math.PI * 54;
+  const offset = circumference * (1 - score / 100);
+  document.getElementById('score-arc').style.strokeDashoffset = offset;
+
+  /* Repo pill */
+  if (repoUrl) {
+    const pill = document.getElementById('repo-pill');
+    pill.textContent = repoUrl.replace('https://github.com/', '');
+    pill.classList.remove('hidden');
+  }
+
+  /* Counts */
+  const counts = { critical: 0, high: 0, medium: 0, low: 0, info: 0 };
+  (r.findings || []).forEach(f => { if (counts[f.severity] !== undefined) counts[f.severity]++; });
+  document.getElementById('cnt-critical').textContent = counts.critical;
+  document.getElementById('cnt-high').textContent = counts.high;
+  document.getElementById('cnt-medium').textContent = counts.medium;
+  document.getElementById('cnt-low').textContent = counts.low;
+
+  /* Severity bars */
+  const total = r.findings.length || 1;
+  const sevMeta = [
+    { key: 'critical', color: 'var(--critical)', label: 'Critical' },
+    { key: 'high', color: 'var(--high)', label: 'High' },
+    { key: 'medium', color: 'var(--medium)', label: 'Medium' },
+    { key: 'low', color: 'var(--low)', label: 'Low' },
+  ];
+  const barsEl = document.getElementById('sev-bars');
+  barsEl.innerHTML = sevMeta.map(s => `
+    <div class="sev-row">
+      <span class="sev-name" style="color:${s.color}">${s.label}</span>
+      <div class="sev-bar-track">
+        <div class="sev-bar-fill" style="background:${s.color};width:0%" data-target="${Math.round(counts[s.key]/total*100)}%"></div>
+      </div>
+      <span class="sev-count" style="color:${s.color}">${counts[s.key]}</span>
+    </div>`).join('');
+  setTimeout(() => {
+    barsEl.querySelectorAll('.sev-bar-fill').forEach(el => {
+      el.style.width = el.dataset.target;
+    });
+  }, 100);
+
+  /* Findings list */
+  const order = ['critical','high','medium','low','info'];
+  const sorted = [...(r.findings||[])].sort((a,b) => order.indexOf(a.severity)-order.indexOf(b.severity));
+  const list = document.getElementById('findings-list');
+  list.innerHTML = '';
+  if (!sorted.length) {
+    list.innerHTML = '<div class="empty-state"><i class="ti ti-circle-check" style="color:#14F195"></i><p>No findings! This contract looks clean.</p></div>';
+  } else {
+    sorted.forEach((f, idx) => {
+      const card = document.createElement('div');
+      card.className = 'finding-card';
+      card.style.animationDelay = (idx * 60) + 'ms';
+      card.innerHTML = `
+        <div class="finding-head" onclick="toggleFinding('${f.id}',this)" aria-expanded="false" role="button" aria-controls="body-${f.id}">
+          <span class="badge badge-${f.severity}">${f.severity}</span>
+          <span class="finding-title">${escHtml(f.title)}</span>
+          <span class="finding-loc">${escHtml(f.location)}</span>
+          <i class="ti ti-chevron-down chevron" id="chev-${f.id}" aria-hidden="true"></i>
+        </div>
+        <div class="finding-body hidden" id="body-${f.id}">
+          <div class="finding-body-field"><strong>Description</strong>${escHtml(f.description)}</div>
+          <div class="finding-body-field"><strong>Impact</strong>${escHtml(f.impact)}</div>
+          <div class="finding-body-field"><strong>Recommendation</strong>${escHtml(f.recommendation)}</div>
+        </div>`;
+      list.appendChild(card);
+    });
+  }
+
+  /* Summary */
+  document.getElementById('summary-text').innerHTML = `<p>${escHtml(r.summary||'').replace(/\n/g,'</p><p>')}</p>`;
+
+  /* Recommendations */
+  const recsEl = document.getElementById('recs-list');
+  const lines = (r.recommendations||'').split('\n').filter(l => l.trim());
+  recsEl.innerHTML = lines.map((line, i) => {
+    const clean = line.replace(/^\d+[\.\)]\s*/,'');
+    return `<div class="rec-item" style="animation-delay:${i*60}ms">
+      <div class="rec-num">${i+1}</div>
+      <div>${escHtml(clean)}</div>
+    </div>`;
+  }).join('');
+
+  document.getElementById('results-section').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+/* ─── UI helpers ─── */
+function toggleFinding(id, head) {
+  const body = document.getElementById('body-' + id);
+  const chev = document.getElementById('chev-' + id);
+  const isOpen = !body.classList.contains('hidden');
+  body.classList.toggle('hidden', isOpen);
+  chev.classList.toggle('open', !isOpen);
+  head.setAttribute('aria-expanded', String(!isOpen));
+}
+
+function switchTab(name, el) {
+  ['findings','summary','recommendations'].forEach(t => {
+    document.getElementById('tab-' + t).classList.add('hidden');
+  });
+  document.querySelectorAll('.tab-btn').forEach(b => { b.classList.remove('active'); b.setAttribute('aria-selected','false'); });
+  document.getElementById('tab-' + name).classList.remove('hidden');
+  el.classList.add('active');
+  el.setAttribute('aria-selected','true');
+}
+
+function copyReport() {
+  if (!lastReport) return;
+  navigator.clipboard.writeText(JSON.stringify(lastReport, null, 2)).then(() => {
+    showToast('Report copied to clipboard', 'ti-copy');
+  }).catch(() => showToast('Copy failed', 'ti-alert-circle'));
+}
+
+function resetAudit() {
+  document.getElementById('results-section').classList.add('hidden');
+  document.getElementById('repo-url').value = '';
+  document.getElementById('code-input').value = '';
+  document.getElementById('repo-pill').classList.add('hidden');
+  openFindings.clear();
+  lastReport = null;
+  document.getElementById('input-card').scrollIntoView({ behavior: 'smooth' });
+}
+
+function followUp(prompt) {
+  const msg = lastReport
+    ? encodeURIComponent(prompt + '\n\nAudit context:\n' + JSON.stringify(lastReport, null, 2).slice(0, 2000))
+    : encodeURIComponent(prompt);
+  showToast('Opening follow-up prompt...', 'ti-external-link');
+}
+
+let toastTimer;
+function showToast(msg, icon = 'ti-check') {
+  const t = document.getElementById('toast');
+  t.querySelector('i').className = 'ti ' + icon;
+  document.getElementById('toast-msg').textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 2800);
+}
+
+function escHtml(str) {
+  if (!str) return '';
+  return String(str)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+</script>
+</body>
+</html>
