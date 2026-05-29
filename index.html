@@ -981,7 +981,18 @@ async function startAudit() {
     const clean = raw.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim();
     const jsonStart = clean.indexOf('{');
     const jsonEnd = clean.lastIndexOf('}');
-    const report = JSON.parse(clean.slice(jsonStart, jsonEnd + 1));
+    let report;
+    try {
+      report = JSON.parse(clean.slice(jsonStart, jsonEnd + 1));
+    } catch (parseError) {
+      console.warn('JSON Parse failed, falling back to raw text', parseError);
+      report = { 
+        score: 50, 
+        findings: [{ title: 'Raw Output', severity: 'Info', description: 'The AI returned a report but the JSON formatting was slightly off. Here is the raw text:\n\n' + raw, recommendation: 'Review raw text' }],
+        executiveSummary: 'The audit completed successfully, but the AI did not format the results as perfect JSON. See the Findings section below for the raw text output.',
+        recommendations: ['Rerun the audit to see if the AI formats the JSON properly next time.']
+      };
+    }
     setProgress(100, 'Audit complete!', -1);
     await sleep(400);
     renderReport(report, repoUrl);
