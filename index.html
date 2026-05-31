@@ -533,7 +533,9 @@ pub struct Initialize<'info> {
     <!-- Run button -->
     <div style="display:flex;justify-content:flex-end;align-items:center;gap:10px;margin-top:1.5rem;">
       <select id="model-select" style="background:var(--bg-2);color:var(--text-2);border:1px solid var(--border-color);border-radius:4px;padding:4px 8px;font-size:12px;outline:none;cursor:pointer;">
+        <option value="claude-opus-4-6">Claude Opus 4.6 (Most Powerful)</option>
         <option value="claude-sonnet-4-6">Claude Sonnet 4.6 (Latest)</option>
+        <option value="claude-opus-4-5">Claude Opus 4.5 (Older)</option>
         <option value="claude-sonnet-4-5">Claude Sonnet 4.5 (Older)</option>
       </select>
       <button class="btn btn-green" id="audit-btn" onclick="startAudit()">
