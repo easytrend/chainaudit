@@ -709,14 +709,20 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape') closeSetting
 
 function saveApiKey() {
   const val = document.getElementById('api-key-input').value.trim();
-  if (!val || val.startsWith('•')) { closeSettings(); return; }
-  apiKey = val;
-  localStorage.setItem('chainaudit_api_key', val);
+  if (val && !val.startsWith('•')) {
+    apiKey = val;
+    localStorage.setItem('chainaudit_api_key', val);
+  }
+  
   const ghVal = document.getElementById('gh-token-input').value.trim();
   if (ghVal && !ghVal.startsWith('•')) {
     githubToken = ghVal;
     localStorage.setItem('chainaudit_gh_token', ghVal);
+  } else if (!ghVal) {
+    githubToken = '';
+    localStorage.removeItem('chainaudit_gh_token');
   }
+  
   updateApiUI();
   closeSettings();
   showToast('API key saved securely', 'ti-check');
