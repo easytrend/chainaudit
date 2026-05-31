@@ -890,7 +890,13 @@ async function handleFetch() {
     let aggregatedCode = '';
     
     for (const file of filesToFetch) {
-      const fileRes = await fetch(`https://raw.githubusercontent.com/${owner}/${repo}/${defaultBranch}/${file.path}`, fetchOpts);
+      let fileRes;
+      if (githubToken && !githubToken.startsWith('•')) {
+        const customOpts = { ...fetchOpts, headers: { ...fetchOpts.headers, 'Accept': 'application/vnd.github.v3.raw' } };
+        fileRes = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${file.path}?ref=${defaultBranch}`, customOpts);
+      } else {
+        fileRes = await fetch(`https://raw.githubusercontent.com/${owner}/${repo}/${defaultBranch}/${file.path}`);
+      }
       if (fileRes.ok) {
         const text = await fileRes.text();
         aggregatedCode += `// ─── File: ${file.path} ───\n${text}\n\n`;
