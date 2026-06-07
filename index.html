@@ -1001,6 +1001,7 @@ async function startAudit() {
       body: JSON.stringify({
         model: document.getElementById('model-select').value,
         max_tokens: 8192,
+        temperature: 0,
         messages: [{ role: 'user', content: prompt }]
       })
     });
