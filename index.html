@@ -670,6 +670,23 @@ pub struct Initialize<'info> {
 <script>
 'use strict';
 
+/* ─── Context Window Budget ───────────────────────────────────────────────────
+ * Claude's input context window: 200,000 tokens
+ * Token ≈ 3.5 characters for source code
+ * 200,000 tokens × 3.5 chars = 700,000 chars total input budget
+ *
+ * We reserve:
+ *   ~2,000 tokens  for the system prompt template & JSON schema
+ *   ~5,000 tokens  for the output (max_tokens below)
+ *   ──────────────────────────────────────────────────────────
+ *   ~193,000 tokens available for code  →  ~675,500 chars
+ *
+ * Setting MAX_CODE_CHARS = 675,000 effectively uses the FULL context window.
+ * This replaces the old 8,000 char (≈2,286 token) limit that caused
+ * every false positive — the scanner was reading only ~4% of codebases.
+ * ─────────────────────────────────────────────────────────────────────────── */
+const MAX_CODE_CHARS = 675_000;
+
 /* ─── State ─── */
 let activeScopes = new Set(['signer','overflow','ownership','reentrancy','cpi','defi','pda','upgrade']);
 let lastReport = null;
@@ -1007,7 +1024,7 @@ async function startAudit() {
       },
       body: JSON.stringify({
         model: document.getElementById('model-select').value,
-        max_tokens: 8192,
+        max_tokens: 16000, // bumped from 8192 — large codebases need bigger output budgets
         temperature: parseFloat(document.getElementById('temperature-select').value),
         messages: [{ role: 'user', content: prompt }]
       })
@@ -1055,7 +1072,7 @@ Perform a thorough, professional architectural and tokenomics security audit for
 
 INPUT: ${inputSummary}
 ACTIVE AUDIT CHECKS: ${scopeList}
-${code ? `\nPROJECT CONTEXT / CONFIGURATION:\n\`\`\`text\n${code.slice(0, 8000)}\n\`\`\`` : ''}
+${code ? `\nPROJECT CONTEXT / CONFIGURATION (${code.length.toLocaleString()} chars, ${Math.round(code.length/3.5).toLocaleString()} tokens):\n\`\`\`text\n${code.slice(0, MAX_CODE_CHARS)}\n\`\`\`` : ''}
 
 Your response MUST be a single valid JSON object — no markdown, no backticks, no explanation before or after. Use this exact schema:
 
@@ -1092,7 +1109,7 @@ Perform a thorough, professional security audit focused on Solana client-side an
  
 INPUT: ${inputSummary}
 ACTIVE AUDIT CHECKS: ${scopeList}
-${code ? `\nSOURCE CODE:\n\`\`\`javascript\n${code.slice(0, 8000)}\n\`\`\`` : ''}
+${code ? `\nSOURCE CODE (${code.length.toLocaleString()} chars, ${Math.round(code.length/3.5).toLocaleString()} tokens sent):\n\`\`\`javascript\n${code.slice(0, MAX_CODE_CHARS)}\n\`\`\`` : ''}
  
 Your response MUST be a single valid JSON object — no markdown, no backticks, no explanation before or after. Use this exact schema:
  
@@ -1128,7 +1145,7 @@ Perform a thorough, professional security audit.
 
 INPUT: ${inputSummary}
 ACTIVE AUDIT CHECKS: ${scopeList}
-${code ? `\nSOURCE CODE:\n\`\`\`rust\n${code.slice(0, 8000)}\n\`\`\`` : ''}
+${code ? `\nSOURCE CODE (${code.length.toLocaleString()} chars, ${Math.round(code.length/3.5).toLocaleString()} tokens sent):\n\`\`\`rust\n${code.slice(0, MAX_CODE_CHARS)}\n\`\`\`` : ''}
 
 Your response MUST be a single valid JSON object — no markdown, no backticks, no explanation before or after. Use this exact schema:
 
