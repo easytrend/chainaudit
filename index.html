@@ -1025,12 +1025,21 @@ async function startAudit() {
         'anthropic-version': '2023-06-01',
         'anthropic-dangerous-direct-browser-access': 'true'
       },
-      body: JSON.stringify({
-        model: document.getElementById('model-select').value,
-        max_tokens: 16000, // bumped from 8192 — large codebases need bigger output budgets
-        temperature: parseFloat(document.getElementById('temperature-select').value),
-        messages: [{ role: 'user', content: prompt }]
-      })
+      body: JSON.stringify((() => {
+        const selectedModel = document.getElementById('model-select').value;
+        // Newer models (opus-4-7+, fable-5) have deprecated the temperature parameter
+        const modelsWithoutTemperature = ['claude-opus-4-7', 'claude-opus-4-8', 'claude-fable-5'];
+        const supportsTemperature = !modelsWithoutTemperature.includes(selectedModel);
+        const payload = {
+          model: selectedModel,
+          max_tokens: 16000, // bumped from 8192 — large codebases need bigger output budgets
+          messages: [{ role: 'user', content: prompt }]
+        };
+        if (supportsTemperature) {
+          payload.temperature = parseFloat(document.getElementById('temperature-select').value);
+        }
+        return payload;
+      })())
     });
 
     if (!res.ok) {
