@@ -1278,11 +1278,18 @@ function renderReport(r, repoUrl) {
   }
 
   /* Summary */
-  document.getElementById('summary-text').innerHTML = `<p>${escHtml(r.summary||'').replace(/\n/g,'</p><p>')}</p>`;
+  const summaryVal = r.summary || r.executiveSummary || '';
+  const summaryStr = Array.isArray(summaryVal) ? summaryVal.join('\n\n') : String(summaryVal);
+  document.getElementById('summary-text').innerHTML = `<p>${escHtml(summaryStr).replace(/\n\n?/g,'</p><p>')}</p>`;
 
   /* Recommendations */
   const recsEl = document.getElementById('recs-list');
-  const lines = (r.recommendations||'').split('\n').filter(l => l.trim());
+  let lines = [];
+  if (Array.isArray(r.recommendations)) {
+    lines = r.recommendations.map(x => String(x).trim()).filter(Boolean);
+  } else if (typeof r.recommendations === 'string') {
+    lines = r.recommendations.split('\n').filter(l => l.trim());
+  }
   recsEl.innerHTML = lines.map((line, i) => {
     const clean = line.replace(/^\d+[\.\)]\s*/,'');
     return `<div class="rec-item" style="animation-delay:${i*60}ms">
