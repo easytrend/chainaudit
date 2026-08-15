@@ -840,83 +840,54 @@ async function handleFetch() {
       }
     }
     
-    // 4. Try to find Rust files first
-    let targetFiles = allBlobs.filter(f => f.path.endsWith('.rs'));
-    let auditMode = 'rust';
+    // 4. Smart Multi-File & Full-Stack Repository Selector
+    const EXCLUDED_DIRS = ['node_modules/', 'dist/', 'build/', 'target/', '.git/', 'coverage/', '.next/', '.cache/'];
+    const EXCLUDED_FILES = ['package-lock.json', 'yarn.lock', 'pnpm-lock.yaml', 'cargo.lock'];
+    const IGNORED_EXTS = ['.png', '.jpg', '.jpeg', '.gif', '.ico', '.svg', '.woff', '.woff2', '.ttf', '.eot', '.mp4', '.mp3', '.pdf', '.zip', '.tar', '.gz', '.wasm', '.so', '.dll', '.exe', '.pyc', '.lock'];
     
-    if (targetFiles.length === 0) {
-      // Look for Web3 frontend files (JS/JSX/TS/TSX)
-      targetFiles = allBlobs.filter(f => (f.path.endsWith('.js') || f.path.endsWith('.jsx') || f.path.endsWith('.ts') || f.path.endsWith('.tsx')) && !f.path.includes('node_modules/') && !f.path.includes('dist/') && !f.path.includes('.config.'));
-      
-      if (targetFiles.length > 0) {
-        auditMode = 'frontend';
-        showToast('Found Solana Web3 Frontend files! Switching to Web3 Frontend Audit mode...', 'ti-info-circle');
-      } else {
-        // General Universal Fallback: get any text files like readme, package configs, toml, python, config files, etc.
-        targetFiles = allBlobs.filter(f => {
-          const p = f.path.toLowerCase();
-          return (p.endsWith('.md') || p.endsWith('.toml') || p.endsWith('.json') || p.endsWith('.py') || p.endsWith('.go') || p.endsWith('.sol') || p.endsWith('.yaml') || p.endsWith('.yml') || p.endsWith('.txt')) && 
-                 !p.includes('node_modules/') && !p.includes('package-lock.json') && !p.includes('yarn.lock');
-        });
-        
-        if (targetFiles.length === 0) {
-          // Absolute fallback: just take the top 5 blobs of any type
-          targetFiles = allBlobs.slice(0, 5);
+    let targetFiles = allBlobs.filter(f => {
+      const p = f.path.toLowerCase();
+      if (EXCLUDED_DIRS.some(dir => p.includes(dir))) return false;
+      if (EXCLUDED_FILES.some(file => p.endsWith(file))) return false;
+      if (IGNORED_EXTS.some(ext => p.endsWith(ext))) return false;
+      return true;
+    });
+
+    // Detect audit mode based on available file types
+    const hasRust = targetFiles.some(f => f.path.endsWith('.rs'));
+    const hasFrontend = targetFiles.some(f => f.path.endsWith('.ts') || f.path.endsWith('.tsx') || f.path.endsWith('.js') || f.path.endsWith('.jsx'));
+    
+    let auditMode = hasRust ? 'rust' : (hasFrontend ? 'frontend' : 'general');
+    
+    // Sort files by security importance so crucial core logic files get fetched first
+    targetFiles.sort((a, b) => {
+      const getPriority = (path) => {
+        const p = path.toLowerCase();
+        if (p.endsWith('.rs') || p.endsWith('.sol')) {
+          if (p.endsWith('lib.rs') || p.endsWith('main.rs')) return 100;
+          if (p.includes('programs/') || p.includes('contracts/') || p.includes('src/')) return 90;
+          return 80;
         }
-        
-        auditMode = 'general';
-        showToast('Performing universal systems & architectural security audit...', 'ti-shield');
-      }
-    }
+        if (p.endsWith('cargo.toml') || p.endsWith('anchor.toml') || p.includes('idl')) return 75;
+        if (p.endsWith('.ts') || p.endsWith('.tsx') || p.endsWith('.js') || p.endsWith('.jsx')) {
+          if (p.includes('app.') || p.includes('main.') || p.includes('index.')) return 65;
+          return 60;
+        }
+        if (p.endsWith('.py') || p.endsWith('.go') || p.endsWith('.sh')) return 50;
+        if (p.endsWith('package.json') || p.endsWith('.toml')) return 40;
+        if (p.endsWith('.md') || p.endsWith('.yaml') || p.endsWith('.yml')) return 30;
+        return 10;
+      };
+      return getPriority(b.path) - getPriority(a.path) || a.path.localeCompare(b.path);
+    });
     
-    // Sort files logic:
-    if (auditMode === 'rust') {
-      targetFiles.sort((a, b) => {
-        const isLibA = a.path.endsWith('lib.rs') ? 1 : 0;
-        const isLibB = b.path.endsWith('lib.rs') ? 1 : 0;
-        if (isLibA !== isLibB) return isLibB - isLibA;
-        
-        const inProgramsA = a.path.includes('programs/') ? 1 : 0;
-        const inProgramsB = b.path.includes('programs/') ? 1 : 0;
-        if (inProgramsA !== inProgramsB) return inProgramsB - inProgramsA;
-        
-        return a.path.localeCompare(b.path);
-      });
-    } else if (auditMode === 'frontend') {
-      targetFiles.sort((a, b) => {
-        const isAppA = a.path.includes('App.') || a.path.includes('main.') ? 1 : 0;
-        const isAppB = b.path.includes('App.') || b.path.includes('main.') ? 1 : 0;
-        if (isAppA !== isAppB) return isAppB - isAppA;
-        
-        const isSolA = a.path.toLowerCase().includes('sol') || a.path.toLowerCase().includes('wallet') ? 1 : 0;
-        const isSolB = b.path.toLowerCase().includes('sol') || b.path.toLowerCase().includes('wallet') ? 1 : 0;
-        if (isSolA !== isSolB) return isSolB - isSolA;
-        
-        return a.path.localeCompare(b.path);
-      });
-    } else {
-      // General Mode: prioritize README.md, package.json, Cargo.toml, architecture docs
-      targetFiles.sort((a, b) => {
-        const aName = a.path.toLowerCase();
-        const bName = b.path.toLowerCase();
-        
-        const isReadmeA = aName.includes('readme') ? 1 : 0;
-        const isReadmeB = bName.includes('readme') ? 1 : 0;
-        if (isReadmeA !== isReadmeB) return isReadmeB - isReadmeA;
-        
-        const isConfigA = aName.includes('toml') || aName.includes('package.json') ? 1 : 0;
-        const isConfigB = bName.includes('toml') || bName.includes('package.json') ? 1 : 0;
-        if (isConfigA !== isConfigB) return isConfigB - isConfigA;
-        
-        return a.path.localeCompare(b.path);
-      });
-    }
-    
-    // Grab the top 20 files to audit
-    const filesToFetch = targetFiles.slice(0, 20);
+    // Dynamically fetch files until the 675,000 character context budget is filled
     let aggregatedCode = '';
+    let fetchedCount = 0;
     
-    for (const file of filesToFetch) {
+    for (const file of targetFiles) {
+      if (aggregatedCode.length >= MAX_CODE_CHARS) break;
+      
       let fileRes;
       if (githubToken && !githubToken.startsWith('•')) {
         const customOpts = { ...fetchOpts, headers: { ...fetchOpts.headers, 'Accept': 'application/vnd.github.v3.raw' } };
@@ -924,9 +895,23 @@ async function handleFetch() {
       } else {
         fileRes = await fetch(`https://raw.githubusercontent.com/${owner}/${repo}/${defaultBranch}/${file.path}`);
       }
+      
       if (fileRes.ok) {
         const text = await fileRes.text();
-        aggregatedCode += `// ─── File: ${file.path} ───\n${text}\n\n`;
+        if (!text || text.trim().length === 0) continue;
+        
+        const header = `// ─── File: ${file.path} ───\n`;
+        if (aggregatedCode.length + header.length + text.length > MAX_CODE_CHARS) {
+          const remaining = MAX_CODE_CHARS - aggregatedCode.length - header.length;
+          if (remaining > 100) {
+            aggregatedCode += header + text.slice(0, remaining) + '\n// ... [File content truncated to fit context budget]\n\n';
+            fetchedCount++;
+          }
+          break;
+        } else {
+          aggregatedCode += header + text + '\n\n';
+          fetchedCount++;
+        }
       }
     }
     
@@ -935,13 +920,14 @@ async function handleFetch() {
     }
     
     codeEditor.value = aggregatedCode.trim();
+    const totalChars = aggregatedCode.length.toLocaleString();
     if (auditMode === 'frontend') {
-      codeEditor.placeholder = `Successfully loaded ${filesToFetch.length} Solana Frontend files from repository. Audit configured for Frontend Web3 Security.`;
-      showToast(`Loaded ${filesToFetch.length} Frontend files from ${repo}`, 'ti-code');
+      codeEditor.placeholder = `Loaded ${fetchedCount} files (${totalChars} chars) from repository. Audit configured for Frontend Web3 Security.`;
+      showToast(`Loaded ${fetchedCount} Frontend files (${totalChars} chars) from ${repo}`, 'ti-code');
       window.currentAuditMode = 'frontend';
     } else if (auditMode === 'general') {
-      codeEditor.placeholder = `Successfully loaded ${filesToFetch.length} Project layout / context files. Ready for architectural and systems security audit.`;
-      showToast(`Loaded ${filesToFetch.length} system context files`, 'ti-shield');
+      codeEditor.placeholder = `Loaded ${fetchedCount} files (${totalChars} chars) from repository. Ready for architectural and systems security audit.`;
+      showToast(`Loaded ${fetchedCount} system context files (${totalChars} chars)`, 'ti-shield');
       window.currentAuditMode = 'general';
     } else {
       codeEditor.placeholder = `Successfully loaded ${filesToFetch.length} Rust files from repository. Feel free to modify before auditing.`;
