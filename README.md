@@ -39,6 +39,19 @@
 | Launchpads | IDO platforms, token sales |
 | Lending Protocols | Collateral, liquidation logic |
 
+## 🚀 Vercel Deployment (.env Support)
+
+You can deploy ChainAudit to Vercel with zero configuration. To keep your API key secure and avoid having to enter it on the frontend every time:
+
+1. Import your GitHub repository to [Vercel](https://vercel.com).
+2. Go to **Project Settings** → **Environment Variables**.
+3. Add:
+   - **Key:** `ANTHROPIC_API_KEY`
+   - **Value:** `sk-ant-...` (Your Anthropic API key)
+4. Deploy!
+
+ChainAudit automatically detects `process.env.ANTHROPIC_API_KEY` via its `/api/audit` serverless route and protects your key from browser exposure. Users can also enter custom keys in Settings to override it.
+
 ## 🔧 Self-Hosting
 
 Just open `index.html` in any web server. No build step needed — it's a single HTML file.
