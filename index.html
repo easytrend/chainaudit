@@ -533,19 +533,19 @@ pub struct Initialize<'info> {
     <!-- Run button -->
     <div style="display:flex;justify-content:flex-end;align-items:center;gap:10px;margin-top:1.5rem;flex-wrap:wrap;">
       <select id="model-select" onchange="onModelChange()" style="background:var(--surface);color:var(--text-2);border:1px solid var(--glass-border);border-radius:var(--radius-sm);padding:5px 9px;font-size:12px;outline:none;cursor:pointer;font-family:'Inter',sans-serif;">
-        <optgroup label="🌟 Frontier Reasoning & Agentic (Latest)">
-          <option value="claude-fable-5-1" selected>Claude Fable 5.1 (Frontier Agentic — Recommended)</option>
-          <option value="claude-opus-5-5">Claude Opus 5.5 (Flagship Deep Reasoning)</option>
-          <option value="claude-mythos-5-1">Claude Mythos 5.1 (Invariants & Architecture)</option>
-          <option value="claude-fable-5">Claude Fable 5 (Agentic V1)</option>
+        <optgroup label="🟢 Balanced & Cost-Effective (Recommended)">
+          <option value="claude-sonnet-5-5" selected>🟢 Claude Sonnet 5.5 (Recommended — Best Balance & Low Cost)</option>
+          <option value="claude-3-5-sonnet-latest">🟢 Claude 3.5 Sonnet (Benchmark Standard — Low Cost)</option>
+          <option value="claude-haiku-5-5">⚡ Claude Haiku 5.5 (Ultra Budget — Minimum Credits)</option>
         </optgroup>
-        <optgroup label="⚡ Claude 5.5 Generation">
-          <option value="claude-sonnet-5-5">Claude Sonnet 5.5 (Speed & Balanced)</option>
-          <option value="claude-haiku-5-5">Claude Haiku 5.5 (Ultra Fast Triage)</option>
-        </optgroup>
-        <optgroup label="🧠 Extended Thinking & Benchmarks">
+        <optgroup label="🧠 Extended Thinking (Moderate Credits)">
           <option value="claude-3-7-sonnet-latest">Claude 3.7 Sonnet (Hybrid Reasoning)</option>
-          <option value="claude-3-5-sonnet-latest">Claude 3.5 Sonnet (Benchmark Standard)</option>
+        </optgroup>
+        <optgroup label="💎 Frontier Reasoning (High Credit Consumption)">
+          <option value="claude-fable-5-1">Claude Fable 5.1 (Frontier Agentic — High Credits)</option>
+          <option value="claude-opus-5-5">Claude Opus 5.5 (Flagship Deep Reasoning — High Credits)</option>
+          <option value="claude-mythos-5-1">Claude Mythos 5.1 (Invariants & Architecture — High Credits)</option>
+          <option value="claude-fable-5">Claude Fable 5 (Agentic V1)</option>
         </optgroup>
         <optgroup label="🏛️ Legacy Series">
           <option value="claude-opus-4-8">Claude Opus 4.8</option>
@@ -713,6 +713,7 @@ let hasServerKey = false;
 
 function onModelChange() {
   const model = document.getElementById('model-select').value;
+  localStorage.setItem('chainaudit_selected_model', model);
   const tempSelect = document.getElementById('temperature-select');
   const noTemp = ['fable', 'mythos', 'opus-4-7', 'opus-4-8', '5-5', '5-1', '3-7'].some(k => model.toLowerCase().includes(k));
   if (noTemp) {
@@ -734,6 +735,10 @@ function onModelChange() {
   githubToken = localStorage.getItem('chainaudit_gh_token') || '';
   updateApiUI();
   checkServerKey();
+  const savedModel = localStorage.getItem('chainaudit_selected_model');
+  if (savedModel && document.querySelector(`#model-select option[value="${savedModel}"]`)) {
+    document.getElementById('model-select').value = savedModel;
+  }
   onModelChange();
 })();
 
@@ -1060,9 +1065,11 @@ async function startAudit() {
     // Newer models and 2026 releases (opus-4-7+, fable, mythos, 5.5, 5.1, 3.7) remove temperature parameter
     const noTempKeywords = ['fable', 'mythos', 'opus-4-7', 'opus-4-8', '5-5', '5-1', '3-7'];
     const supportsTemperature = !noTempKeywords.some(k => selectedModel.toLowerCase().includes(k));
+    // Adaptive token budget: 8,192 is optimal for complete findings without burning excess output credits
+    const isFrontier = ['fable', 'mythos', 'opus-5'].some(k => selectedModel.toLowerCase().includes(k));
     const payload = {
       model: selectedModel,
-      max_tokens: 16000, // large codebases need generous output budgets
+      max_tokens: isFrontier ? 10000 : 8192,
       messages: [{ role: 'user', content: prompt }]
     };
     if (supportsTemperature) {
